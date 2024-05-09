@@ -1,0 +1,14 @@
+---
+version: "3.1"
+
+services:
+  run-docker:
+    image: jsmit257/rs:lkg
+    hostname: result-scheduler
+    build: .
+    environment:
+      - FLEET_SIZE
+      - HOURS_PER_SHIFT
+      - LOG_LEVEL
+      - ORIGIN_X
+      - ORIGIN_Y
