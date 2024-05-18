@@ -12,13 +12,12 @@ type (
 	}
 
 	Pickup struct { // one discrete segment of travel
-		Origin, Work Edge
+		Unbillable, Work Edge
 	}
 
-	Driver struct {
-		Segments []*Pickup
-		Current  int // for real-time add/delete
-	}
+	Driver []*Pickup
 
-	Shift []Driver
+	Edges []Edge
+
+	Shift []*Driver
 )

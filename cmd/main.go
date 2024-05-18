@@ -6,38 +6,73 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
+	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/jsmit257/route-scheduler/internal/config"
 	"github.com/jsmit257/route-scheduler/internal/plan"
 )
 
 func main() {
 	var err error
-	var fleetSize int
 
-	log.SetLevel(log.DebugLevel) // TODO: grab this from the config
-	log.SetOutput(os.Stderr)
-	log.SetFormatter(&log.JSONFormatter{})
-	l := log.WithFields(log.Fields{
-		"app":      "route-scheduler",
-		"function": "main",
-	})
+	cfg := config.NewConfig()
 
-	if trucks := os.Getenv("FLEET_SIZE"); trucks == "" {
-		fleetSize = 12
-	} else if fleetSize, err = strconv.Atoi(trucks); err != nil {
-		l.WithError(err).Fatalf("FLEET_SIZE=%s cannot be converted to an int", trucks)
+	logger := initLogger(cfg).WithField("function", "main")
+
+	logger.WithField("cfg", cfg).Debug("initialized config and logger")
+
+	edges := getEntries(logger)
+
+	logger.WithField("edges", len(edges)).Debug("done reading")
+
+	// mapReduce(edges, logger)
+
+	var sorted plan.Shift
+	sorted, err = plan.NewShift(cfg.FleetSize).Sort(plan.Origin, &edges)
+	if err != nil {
+		logger.
+			WithError(err).
+			WithField("edges-remaining", len(edges)).
+			Fatal("sorting failed")
 	}
 
-	l.WithField("drivers", fleetSize).Debug("fleet")
+	report(sorted.Graph(), logger) // stdout for the client
 
-	edges := getEntries(l)
+	shiftCost := 0.0
+	for _, d := range sorted {
+		msg := "driver cost in range"
+		if d.Minutes() > plan.MaxDepth {
+			msg = "driver cost exceeded range"
+		}
 
-	l.WithField("edges", edges).Debug("finished reading")
+		c := d.TotalCost()
+		shiftCost += c
+		logger.
+			WithFields(log.Fields{
+				"efficiency": fmt.Sprintf("%.2f%%", d.Efficiency()*100),
+				"total_cost": time.Duration(c) * time.Nanosecond, // actually, it's minutes
+				"pickups":    d.Graph(),
+			}).
+			Debug(msg)
+	}
 
-	for _, path := range plan.NewShift(fleetSize).Sort(plan.Origin, edges).Graph() {
+	logger.
+		WithFields(log.Fields{
+			"shift_cost": shiftCost,
+			"total_cost": 500*float64(cfg.FleetSize) + shiftCost,
+		}).
+		Info("done!")
+}
+
+func report(graph [][]int, l *log.Entry) {
+	l = l.WithField("function", "report")
+	for _, path := range graph {
+		if len(path) == 0 {
+			continue
+		}
 		if text, err := json.Marshal(path); err != nil {
 			l.WithError(err).Error("json failed")
 		} else {
@@ -46,7 +81,7 @@ func main() {
 	}
 }
 
-func getEntries(l *log.Entry) []plan.Edge {
+func getEntries(l *log.Entry) plan.Edges {
 	var err error
 
 	l = l.WithField("function", "getReader")
@@ -68,7 +103,7 @@ func getEntries(l *log.Entry) []plan.Edge {
 	return processLines(bufio.NewReader(f), l)
 }
 
-func processLines(r *bufio.Reader, l *log.Entry) []plan.Edge {
+func processLines(r *bufio.Reader, l *log.Entry) plan.Edges {
 	var err error
 	// var line []byte
 	var e = plan.Edge{}
@@ -105,4 +140,24 @@ func processLines(r *bufio.Reader, l *log.Entry) []plan.Edge {
 	}
 
 	return result
+}
+
+func initLogger(cfg *config.Config) *log.Entry {
+	if logLevel, ok := map[string]log.Level{
+		"trace": log.TraceLevel,
+		"debug": log.DebugLevel,
+		"info":  log.InfoLevel,
+		"warn":  log.WarnLevel,
+		"error": log.ErrorLevel,
+		"fatal": log.FatalLevel,
+		"panic": log.PanicLevel,
+	}[strings.ToLower(cfg.LogLevel)]; ok {
+		log.SetLevel(logLevel)
+	} else {
+		log.SetLevel(log.DebugLevel)
+	}
+	log.SetOutput(os.Stderr)
+	log.SetFormatter(&log.JSONFormatter{})
+
+	return log.WithField("app", "route-scheduler")
 }

@@ -7,4 +7,8 @@ services:
     hostname: result-scheduler
     build: .
     environment:
-      - FLEET_SIZE=12
+      - FLEET_SIZE
+      - HOURS_PER_SHIFT
+      - LOG_LEVEL
+      - ORIGIN_X
+      - ORIGIN_Y

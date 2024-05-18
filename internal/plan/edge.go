@@ -1,6 +1,9 @@
 package plan
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 func NewEdge(src, dst Point) *Edge {
 	return &Edge{
@@ -8,6 +11,18 @@ func NewEdge(src, dst Point) *Edge {
 		Dest:   dst,
 		l:      math.Sqrt(math.Pow(src.X-dst.X, 2) + math.Pow(src.Y-dst.Y, 2)),
 	}
+}
+
+func (es *Edges) Find(s Edge) int {
+	return slices.IndexFunc(*es, func(e Edge) bool {
+		return e.ID == s.ID
+	})
+}
+
+func (es *Edges) Remove(ndx int) *Edges {
+	*es = append((*es)[:ndx], (*es)[ndx+1:]...)
+	return es
+
 }
 
 func (e *Edge) SetID(id int) *Edge {
