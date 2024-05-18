@@ -19,8 +19,15 @@ func (es *Edges) Find(s Edge) int {
 	})
 }
 
+func (es *Edges) Push(e Edge) *Edges {
+	*es = append((*es), e)
+	return es
+}
+
 func (es *Edges) Remove(ndx int) *Edges {
-	*es = append((*es)[:ndx], (*es)[ndx+1:]...)
+	if l := len(*es); l > ndx {
+		*es = append((*es)[:ndx], (*es)[ndx+1:]...)
+	}
 	return es
 
 }

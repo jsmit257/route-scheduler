@@ -3,7 +3,6 @@ package plan
 import (
 	"math"
 	"slices"
-	"time"
 )
 
 func NewDriver(len int) *Driver {
@@ -32,8 +31,8 @@ func (d *Driver) TotalCost() float64 {
 	return result
 }
 
-func (d *Driver) Minutes() time.Duration {
-	return time.Duration(d.TotalCost()) * time.Minute
+func (d *Driver) Minutes() float64 {
+	return d.TotalCost()
 }
 
 func (d *Driver) Efficiency() float64 {
@@ -47,7 +46,11 @@ func (d *Driver) Efficiency() float64 {
 func (d *Driver) Vacancy(p *Pickup) bool {
 	d.Push(p)
 	err := d.Minutes() > MaxDepth
-	// fmt.Fprintf(os.Stderr, "result %5v, test: %d, max: %d\n", !err, d.Minutes(), MaxDepth)
+	// logger.WithFields(log.Fields{
+	// 	"minutes": d.Minutes(),
+	// 	"max":     MaxDepth,
+	// 	"err":     err,
+	// }).Warn("not this shit again")
 	if err {
 		d.Pop()
 	}
@@ -55,7 +58,9 @@ func (d *Driver) Vacancy(p *Pickup) bool {
 }
 
 func (d *Driver) Pop() *Driver {
-	*d = (*d)[:len(*d)-1]
+	if l := len(*d); l != 0 {
+		*d = (*d)[:l-1]
+	}
 	return d
 }
 
@@ -64,8 +69,7 @@ func (d *Driver) Push(p *Pickup) *Driver {
 	return d
 }
 
-func (d *Driver) FindClosest(edges Edges, head int) []*Pickup {
-	pickups := []*Pickup{}
+func (d *Driver) FindClosest(edges Edges, head int) (pickups []*Pickup) {
 	for _, e := range edges {
 		pickups = append(pickups, NewPickup(d.End(), e))
 	}
@@ -91,6 +95,10 @@ func (d *Driver) Last() *Pickup {
 	} else {
 		return (*d)[l]
 	}
+}
+
+func (d *Driver) Empty() bool {
+	return len(*d) == 0
 }
 
 func (d *Driver) End() Point {

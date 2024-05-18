@@ -2,13 +2,13 @@ package plan
 
 func NewPickup(o Point, e Edge) *Pickup {
 	return &Pickup{
-		Unbillable: *NewEdge(o, e.Source),
-		Work:       e,
+		Travel: *NewEdge(o, e.Source),
+		Work:   e,
 	}
 }
 
 func (p *Pickup) TotalCost() float64 {
-	return p.Unbillable.Cost() + p.Work.Cost()
+	return p.Travel.Cost() + p.Work.Cost()
 }
 
 func (p *Pickup) Efficiency() float64 {
