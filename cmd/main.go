@@ -13,19 +13,15 @@ import (
 )
 
 func main() {
-	// var err error
-
-	cfg := plan.GetConfig()
-
 	logger := plan.GetLogger().WithField("function", "main")
 
-	logger.Debug("initialized config and logger")
+	logger.Debug("initialized main")
 
 	edges := getEntries(logger)
 
-	logger.WithField("edges", len(edges)).Debug("done reading")
+	logger.WithField("edges", len(edges)).Info("done reading")
 
-	sorted := plan.NewShift(1).Sort(edges)
+	sorted, _ := plan.NewShift(edges)
 
 	report(sorted.Graph(), logger) // stdout for the client
 
@@ -36,23 +32,22 @@ func main() {
 			msg = "driver cost exceeded range"
 		}
 
-		c := d.TotalCost()
+		c := d.Minutes()
 		shiftCost += c
-		logger.
-			WithFields(log.Fields{
-				"efficiency": fmt.Sprintf("%.2f%%", d.Efficiency()/(float64(cfg.FleetSize))*100),
-				"total_cost": c,
-				"pickups":    d.Graph(),
-			}).
-			Debug(msg)
+		logger.WithFields(log.Fields{
+			"efficiency": fmt.Sprintf("%.2f%%", d.Efficiency()/(float64(len(sorted)))*100),
+			"total_cost": c,
+			"pickups":    d.Graph(),
+		}).Debug(msg)
 	}
 
-	logger.
-		WithFields(log.Fields{
-			"shift_cost": shiftCost,
-			"total_cost": 500*float64(cfg.FleetSize) + shiftCost,
-		}).
-		Info("done!")
+	logger.WithFields(log.Fields{
+		"shift_cost": shiftCost,
+		"total_cost": 500*float64(len(sorted)) + shiftCost,
+		"sorted":     sorted.Graph(),
+		"count":      len(sorted),
+		"size":       len(edges),
+	}).Info("done!")
 }
 
 func report(graph [][]int, l *log.Entry) {
@@ -123,7 +118,10 @@ func processLines(r *bufio.Reader, l *log.Entry) plan.Edges {
 	}
 
 	if err != io.EOF {
-		l.WithError(err).Fatalf("unexpected end of input: '%s'", os.Args[1])
+		l.
+			WithError(err).
+			WithField("filename", os.Args[1]).
+			Fatal("unexpected end of input")
 	}
 
 	return result

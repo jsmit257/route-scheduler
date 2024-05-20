@@ -19,5 +19,5 @@ type (
 
 	Driver []*Pickup
 
-	Shift []*Driver
+	Shift []Driver
 )

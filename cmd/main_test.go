@@ -15,7 +15,7 @@ func Test_Main(t *testing.T) {
 		test func(require.TestingT, interface{}, ...interface{})
 	}{
 		"happy_path": {
-			args: []string{os.Args[0], "../data/problem1.txt"},
+			args: []string{os.Args[0], "../data/problem9.txt"},
 			test: require.Nil,
 		},
 		// XXX: they die on a panic anyway, so, for now...

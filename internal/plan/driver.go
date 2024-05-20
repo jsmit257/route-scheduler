@@ -5,8 +5,8 @@ import (
 	"slices"
 )
 
-func NewDriver(len int) *Driver {
-	result := make(Driver, 0, len)
+func NewDriver(p ...*Pickup) *Driver {
+	result := Driver(p)
 	return &result
 }
 
@@ -44,13 +44,8 @@ func (d *Driver) Efficiency() float64 {
 }
 
 func (d *Driver) Vacancy(p *Pickup) bool {
-	d.Push(p)
+	d = d.Push(p)
 	err := d.Minutes() > MaxDepth
-	// logger.WithFields(log.Fields{
-	// 	"minutes": d.Minutes(),
-	// 	"max":     MaxDepth,
-	// 	"err":     err,
-	// }).Warn("not this shit again")
 	if err {
 		d.Pop()
 	}
@@ -74,7 +69,13 @@ func (d *Driver) FindClosest(edges Edges, head int) (pickups []*Pickup) {
 		pickups = append(pickups, NewPickup(d.End(), e))
 	}
 	slices.SortFunc(pickups, func(a, b *Pickup) int {
-		return a.MostEfficient(b)
+		if l, r := a.Efficiency(), b.Efficiency(); l == r {
+			return 0
+		} else if l > r {
+			return -1
+		} else {
+			return 1
+		}
 	})
 	if lenPickups := len(pickups); lenPickups < head {
 		head = lenPickups
@@ -82,23 +83,12 @@ func (d *Driver) FindClosest(edges Edges, head int) (pickups []*Pickup) {
 	return pickups[:head]
 }
 
-func (d *Driver) ReportWork() (result Edges) {
-	for _, s := range *d {
-		result = append(result, s.Work)
-	}
-	return result
-}
-
 func (d *Driver) Last() *Pickup {
-	if l := len(*d) - 1; l < 0 {
+	if l := len(*d); l == 0 {
 		return nil
 	} else {
-		return (*d)[l]
+		return (*d)[l-1]
 	}
-}
-
-func (d *Driver) Empty() bool {
-	return len(*d) == 0
 }
 
 func (d *Driver) End() Point {

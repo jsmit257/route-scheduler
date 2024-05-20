@@ -31,6 +31,12 @@ func init() {
 	}
 
 	logger = log.WithField("app", "route-scheduler")
+
+	logger.WithFields(log.Fields{
+		"assigned":  log.GetLevel(),
+		"requested": cfg.LogLevel,
+		"conifg":    cfg,
+	}).Debug("initialized logger")
 }
 
 var (
@@ -41,6 +47,8 @@ var (
 	logger *log.Entry
 
 	NoMoreTime = fmt.Errorf("all vehicles' schedules are full")
+
+	Debug = false
 )
 
 const (
