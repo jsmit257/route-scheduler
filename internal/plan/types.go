@@ -11,13 +11,13 @@ type (
 		l            float64 // expensive math, better to WORM
 	}
 
+	Edges []Edge
+
 	Pickup struct { // one discrete segment of travel
-		Unbillable, Work Edge
+		Travel, Work Edge
 	}
 
 	Driver []*Pickup
 
-	Edges []Edge
-
-	Shift []*Driver
+	Shift []Driver
 )

@@ -3,11 +3,10 @@ package plan
 import (
 	"math"
 	"slices"
-	"time"
 )
 
-func NewDriver(len int) *Driver {
-	result := make(Driver, 0, len)
+func NewDriver(p ...*Pickup) *Driver {
+	result := Driver(p)
 	return &result
 }
 
@@ -32,8 +31,8 @@ func (d *Driver) TotalCost() float64 {
 	return result
 }
 
-func (d *Driver) Minutes() time.Duration {
-	return time.Duration(d.TotalCost()) * time.Minute
+func (d *Driver) Minutes() float64 {
+	return d.TotalCost()
 }
 
 func (d *Driver) Efficiency() float64 {
@@ -45,9 +44,8 @@ func (d *Driver) Efficiency() float64 {
 }
 
 func (d *Driver) Vacancy(p *Pickup) bool {
-	d.Push(p)
+	d = d.Push(p)
 	err := d.Minutes() > MaxDepth
-	// fmt.Fprintf(os.Stderr, "result %5v, test: %d, max: %d\n", !err, d.Minutes(), MaxDepth)
 	if err {
 		d.Pop()
 	}
@@ -55,7 +53,9 @@ func (d *Driver) Vacancy(p *Pickup) bool {
 }
 
 func (d *Driver) Pop() *Driver {
-	*d = (*d)[:len(*d)-1]
+	if l := len(*d); l != 0 {
+		*d = (*d)[:l-1]
+	}
 	return d
 }
 
@@ -64,13 +64,18 @@ func (d *Driver) Push(p *Pickup) *Driver {
 	return d
 }
 
-func (d *Driver) FindClosest(edges Edges, head int) []*Pickup {
-	pickups := []*Pickup{}
+func (d *Driver) FindClosest(edges Edges, head int) (pickups []*Pickup) {
 	for _, e := range edges {
 		pickups = append(pickups, NewPickup(d.End(), e))
 	}
 	slices.SortFunc(pickups, func(a, b *Pickup) int {
-		return a.MostEfficient(b)
+		if l, r := a.Efficiency(), b.Efficiency(); l == r {
+			return 0
+		} else if l > r {
+			return -1
+		} else {
+			return 1
+		}
 	})
 	if lenPickups := len(pickups); lenPickups < head {
 		head = lenPickups
@@ -78,18 +83,11 @@ func (d *Driver) FindClosest(edges Edges, head int) []*Pickup {
 	return pickups[:head]
 }
 
-func (d *Driver) ReportWork() (result Edges) {
-	for _, s := range *d {
-		result = append(result, s.Work)
-	}
-	return result
-}
-
 func (d *Driver) Last() *Pickup {
-	if l := len(*d) - 1; l < 0 {
+	if l := len(*d); l == 0 {
 		return nil
 	} else {
-		return (*d)[l]
+		return (*d)[l-1]
 	}
 }
 

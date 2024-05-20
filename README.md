@@ -1,9 +1,20 @@
 ## Route Scheduler
-This particular implementation of the requirements is essentially a configurable number of travelling salesman each choosing their next nearest-neighbor from a shared hat, until they're all gone, or no driver has time in their (default 12 hour) shift to deliver the remaining pickups. It's not fast. More importantly, it's not well-optimized: it takes 20 drivers 12 hours to deliver 50 loads at about 50% efficiency, where efficiency is the quotient `{pickup_to_dropoff}/({here_to_pickup+pickup_to_dropoff})`. And because of the randomness of goroutines, even that doesn't always work.
+Still a travelling salesman. This time around, we 
+- try every delivery as a possible starting point, then
+- calculate a nearest neighbor path through all the remaining points, and
+- split the shortest path into segments that can all be delivered in one 12-hour shift
 
-A proper solution would use a map/reduce strategy over the massive number of possible permutations in a set of 200 start/end pairs (is it `40000!`). The 12-hour time constraint lets us truncate a lot of those paths into something manageable. Haven't quite had time to sort all that out, yet, but it would yield the most accurate results. Hopefully fast enough to be useful.
+In a perfect world, the result of the nearest neighbor is just a limit to set when using a permutational approach so paths can be truncated when they're already longer than a known-shortest path, thus saving a lot of extra work. This actually works and is deployed, but it's only practical for small data sets: for the 10 records in `problem1.txt` this algorithm cuts the mean cost by about 1300, but it takes much longer. For large sets - anything greater than 10 deliveries - the current implementation is either killed by the test timeout (default: 10m), or it overflows the max number of goroutines. Remember that `50!` is about `3*10^64` combinations, so a naive approach would overflow 64-bit stackframe-IDs by a lot.
 
-It is possible to run the complete suite successfully in a 12 hour shift, but it requires 190 vehicles.
+_tl;dr_
+To run this, just:
+```sh
+make run-docker
+```
+Or, to run it with more noise (default is info, skipping trace & debug messages):
+```sh
+LOG_LEVEL=trace make run-docker
+```
 
 ### Requirements
 This project can run completely in [docker](https://hub.docker.com/repository/docker/jsmit257/rs/general), or with no docker at all, so not all the following are necessary.
@@ -17,7 +28,6 @@ This project can run completely in [docker](https://hub.docker.com/repository/do
 
 #### Environment variables
 These are passed through either `make` or `docker-compose.yml` on the command-line. All are optional with sane defaults.
-- FLEET_SIZE: how many vehicles are servicing this shift (default: 12)
 - HOURS_PER_SHIFT: self-explanatory (default: 12)
 - LOG_LEVEL: case-insensitive (trace, debug, warn, ...) (default: Debug)
 - ORIGIN_X: x-coordinate of the origin (default: 0)
@@ -25,11 +35,11 @@ These are passed through either `make` or `docker-compose.yml` on the command-li
 
 So, any of the following commands can be preceeded on the command-line with 0 or more of the these variables (copy/paste the needful ones), and we won't clutter each command with these optional configs:
 ```sh
-[FLEET_SIZE=nn] [HOURS_PER_SHIFT=nn] [LOG_LEVEL=...] [ORIGIN_X=nn] [ORIGIN_Y=nn] cmd ...
+[HOURS_PER_SHIFT=nn] [LOG_LEVEL=...] [ORIGIN_X=nn] [ORIGIN_Y=nn] cmd ...
 ```
 That being said, it's our habit to always include these two in most commands:
 ```sh
-FLEET_SIZE=20 HOURS_PER_SHIFT=12 make test
+HOURS_PER_SHIFT=12 make test
 ```
 
 #### Docker
